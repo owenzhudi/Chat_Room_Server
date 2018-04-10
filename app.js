@@ -34,13 +34,39 @@ let id = 1;
 io.on('connection', socket => {
   let user = `Guest${id++}`;
   users.push(user);
-  console.log('a user connected');
-  io.emit('get username', {username: user});
+  console.log(`user ${user} connected`);
+  io.emit('get username', {username: user, server: true});
+  //io.emit('receive chat message', {message: `You are known as ${user}.`, server: true});
+  let userStr = '';
+  for (let i = 0; i < users.length; i++) {
+    userStr += users[i];
+    if (i < users.length - 1) {
+      userStr += ', ';
+    }
+  }
+  io.emit('receive chat message', {message: `Users currently in lobby: ${userStr}.`, server: true});
   // send message
   socket.on('chat message', message => {
     console.log('message: ', message);
-    message.username = user;
-    io.emit('chat message', message);
+    const curMsg = message.message;
+    if (curMsg.startsWith('/')) {
+      const spaceIndex = curMsg.indexOf(' ');
+      const firstWord = curMsg.substring(0, spaceIndex);
+      if (firstWord === '/nick') {
+        const prevName = message.username;
+        const index = users.indexOf(prevName);
+        const newName = curMsg.substring(spaceIndex + 1);
+        users[index] = newName;
+        io.emit('get username', {username: newName, prevName, server: true});
+        // io.emit('receive chat message', {message: `You are known as ${newName}.`, server: true});
+      } else {
+        io.emit('receive chat message', {message: 'The command is not supported.', server: true});
+      }
+    } else {
+      //message.username = user;
+      io.emit('receive chat message', message);
+    }
+    
     //socket.broadcast.emit('chat message', message);
   });
 
